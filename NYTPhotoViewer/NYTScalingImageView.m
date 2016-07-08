@@ -10,19 +10,13 @@
 
 #import "tgmath.h"
 
-#ifdef ANIMATED_GIF_SUPPORT
 #import <FLAnimatedImage/FLAnimatedImage.h>
-#endif
 
 @interface NYTScalingImageView ()
 
 - (instancetype)initWithCoder:(NSCoder *)aDecoder NS_DESIGNATED_INITIALIZER;
 
-#ifdef ANIMATED_GIF_SUPPORT
 @property (nonatomic) FLAnimatedImageView *imageView;
-#else
-@property (nonatomic) UIImageView *imageView;
-#endif
 @end
 
 @implementation NYTScalingImageView
@@ -62,17 +56,17 @@
     if (self) {
         [self commonInitWithImage:image imageData:nil];
     }
-    
+
     return self;
 }
 
 - (instancetype)initWithImageData:(NSData *)imageData frame:(CGRect)frame {
     self = [super initWithFrame:frame];
-    
+
     if (self) {
         [self commonInitWithImage:nil imageData:imageData];
     }
-    
+
     return self;
 }
 
@@ -87,13 +81,9 @@
 - (void)setupInternalImageViewWithImage:(UIImage *)image imageData:(NSData *)imageData {
     UIImage *imageToUse = image ?: [UIImage imageWithData:imageData];
 
-#ifdef ANIMATED_GIF_SUPPORT
     self.imageView = [[FLAnimatedImageView alloc] initWithImage:imageToUse];
-#else
-    self.imageView = [[UIImageView alloc] initWithImage:imageToUse];
-#endif
     [self updateImage:imageToUse imageData:imageData];
-    
+
     [self addSubview:self.imageView];
 }
 
@@ -107,11 +97,9 @@
 
 - (void)updateImage:(UIImage *)image imageData:(NSData *)imageData {
 #ifdef DEBUG
-#ifndef ANIMATED_GIF_SUPPORT
-    if (imageData != nil) {
-        NSLog(@"[NYTPhotoViewer] Warning! You're providing imageData for a photo, but NYTPhotoViewer was compiled without animated GIF support. You should use native UIImages for non-animated photos. See the NYTPhoto protocol documentation for discussion.");
-    }
-#endif // ANIMATED_GIF_SUPPORT
+  if (imageData != nil) {
+      NSLog(@"[NYTPhotoViewer] Warning! You're providing imageData for a photo, but NYTPhotoViewer was compiled without animated GIF support. You should use native UIImages for non-animated photos. See the NYTPhoto protocol documentation for discussion.");
+  }
 #endif // DEBUG
 
     UIImage *imageToUse = image ?: [UIImage imageWithData:imageData];
@@ -119,16 +107,15 @@
     // Remove any transform currently applied by the scroll view zooming.
     self.imageView.transform = CGAffineTransformIdentity;
     self.imageView.image = imageToUse;
-    
-#ifdef ANIMATED_GIF_SUPPORT
+
     // It's necessarry to first assign the UIImage so calulations for layout go right (see above)
     self.imageView.animatedImage = [[FLAnimatedImage alloc] initWithAnimatedGIFData:imageData];
-#endif
-    
+
+
     self.imageView.frame = CGRectMake(0, 0, imageToUse.size.width, imageToUse.size.height);
-    
+
     self.contentSize = imageToUse.size;
-    
+
     [self updateZoomScale];
     [self centerScrollViewContents];
 }
@@ -142,22 +129,18 @@
 }
 
 - (void)updateZoomScale {
-#ifdef ANIMATED_GIF_SUPPORT
     if (self.imageView.animatedImage || self.imageView.image) {
-#else
-    if (self.imageView.image) {
-#endif
         CGRect scrollViewFrame = self.bounds;
-        
+
         CGFloat scaleWidth = scrollViewFrame.size.width / self.imageView.image.size.width;
         CGFloat scaleHeight = scrollViewFrame.size.height / self.imageView.image.size.height;
         CGFloat minScale = MIN(scaleWidth, scaleHeight);
-        
+
         self.minimumZoomScale = minScale;
         self.maximumZoomScale = MAX(minScale, self.maximumZoomScale);
-        
+
         self.zoomScale = self.minimumZoomScale;
-        
+
         // scrollView.panGestureRecognizer.enabled is on by default and enabled by
         // viewWillLayoutSubviews in the container controller so disable it here
         // to prevent an interference with the container controller's pan gesture.
@@ -173,20 +156,20 @@
 - (void)centerScrollViewContents {
     CGFloat horizontalInset = 0;
     CGFloat verticalInset = 0;
-    
+
     if (self.contentSize.width < CGRectGetWidth(self.bounds)) {
         horizontalInset = (CGRectGetWidth(self.bounds) - self.contentSize.width) * 0.5;
     }
-    
+
     if (self.contentSize.height < CGRectGetHeight(self.bounds)) {
         verticalInset = (CGRectGetHeight(self.bounds) - self.contentSize.height) * 0.5;
     }
-    
+
     if (self.window.screen.scale < 2.0) {
         horizontalInset = __tg_floor(horizontalInset);
         verticalInset = __tg_floor(verticalInset);
     }
-    
+
     // Use `contentInset` to center the contents in the scroll view. Reasoning explained here: http://petersteinberger.com/blog/2013/how-to-center-uiscrollview/
     self.contentInset = UIEdgeInsetsMake(verticalInset, horizontalInset, verticalInset, horizontalInset);
 }
